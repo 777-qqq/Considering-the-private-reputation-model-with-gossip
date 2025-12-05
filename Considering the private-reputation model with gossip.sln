@@ -1,31 +1,108 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.11.35312.102
-MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Considering the private-reputation model with gossip", "Considering the private-reputation model with gossip\Considering the private-reputation model with gossip.vcxproj", "{D0830C89-1861-49EA-B4C9-35899AC55F4A}"
-EndProject
-Global
-	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x64 = Debug|x64
-		Debug|x86 = Debug|x86
-		Release|x64 = Release|x64
-		Release|x86 = Release|x86
-	EndGlobalSection
-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{D0830C89-1861-49EA-B4C9-35899AC55F4A}.Debug|x64.ActiveCfg = Debug|x64
-		{D0830C89-1861-49EA-B4C9-35899AC55F4A}.Debug|x64.Build.0 = Debug|x64
-		{D0830C89-1861-49EA-B4C9-35899AC55F4A}.Debug|x86.ActiveCfg = Debug|Win32
-		{D0830C89-1861-49EA-B4C9-35899AC55F4A}.Debug|x86.Build.0 = Debug|Win32
-		{D0830C89-1861-49EA-B4C9-35899AC55F4A}.Release|x64.ActiveCfg = Release|x64
-		{D0830C89-1861-49EA-B4C9-35899AC55F4A}.Release|x64.Build.0 = Release|x64
-		{D0830C89-1861-49EA-B4C9-35899AC55F4A}.Release|x86.ActiveCfg = Release|Win32
-		{D0830C89-1861-49EA-B4C9-35899AC55F4A}.Release|x86.Build.0 = Release|Win32
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {C2C4D1DB-40AE-49E9-9D45-E53F9094C9FD}
-	EndGlobalSection
-EndGlobal
+for (int MCS = 1; MCS < 10001; MCS++) {
+    int allc = 0, alld = 0, disc = 0;
+    for (int i = 0; i < N; i++) {
+        if (grid[i] == 1) {
+            allc++;
+        }
+        else if (grid[i] == 0) {
+            alld++;
+        }
+        else
+        {
+            disc++;
+        }
+    }
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (i == j) continue;
+            if (grid[i] == 0) {
+                behaviors[i][j] = 0;
+            }
+            else if (grid[i] == 1) {
+                behaviors[i][j] = 1;
+            }
+            else {
+                behaviors[i][j] = (assessments[i][j] >= θ) ? 1 : 0;
+            }
+        }
+    }
+    vector<vector<double>> new_assessments = assessments;
+    for (int observer = 0; observer < N; observer++) {
+        for (int donor = 0; donor < N; donor++) {
+            if (observer == donor) continue;
+            int recipient;
+            do {
+                recipient = rand() % N;
+            } while (recipient == observer || recipient == donor);
+            int action = behaviors[donor][recipient];
+            double recipient_rep = assessments[observer][recipient];
+            if (action == 1) {
+                if (recipient_rep >= 0.5) {
+                    new_assessments[observer][donor] = new_assessments[observer][donor] + a;
+                }
+                else {
+                    new_assessments[observer][donor] = new_assessments[observer][donor] - a;
+                }
+            }
+            else {
+                if (recipient_rep >= 0.5) {
+                    new_assessments[observer][donor] = new_assessments[observer][donor] - a;
+                }
+                else {
+                    new_assessments[observer][donor] = new_assessments[observer][donor] + a;
+                }
+            }
+            new_assessments[observer][donor] = max(0.0, min(1.0, new_assessments[observer][donor]));
+        }
+    }
+    assessments = new_assessments;
+    for (int gossip = 0; gossip < f * N * N * N; gossip++) {
+        int i = rand() % N;
+        int j = rand() % N;
+        while (j == i) {
+            j = rand() % N;
+        }
+        int k = rand() % N;
+        while (k == i || k == j) {
+            k = rand() % N;
+        }
+        if ((static_cast<double>(rand()) / RAND_MAX) < P) {
+            int m;
+            do {
+                m = rand() % N;
+            } while (m == i || m == j || m == k);
+            double mean_rep = (assessments[j][k] + assessments[m][k]) / 2.0;
+            assessments[i][k] = w * mean_rep + (1 - w) * assessments[i][k];
+            assessments[i][k] = max(0.0, min(1.0, assessments[i][k]));
+        }
+        else {
+            assessments[i][k] = w * assessments[j][k] + (1 - w) * assessments[i][k];
+            assessments[i][k] = max(0.0, min(1.0, assessments[i][k]));
+        }
+    }
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (i == j) continue;
+            if (grid[i] == 0) {
+                behaviors[i][j] = 0;
+            }
+            else if (grid[i] == 1) {
+                behaviors[i][j] = 1;
+            }
+            else {
+                behaviors[i][j] = (assessments[i][j] >= θ) ? 1 : 0;
+            }
+        }
+    }
+    for (int k = 0; k < N; k++) {
+        int i = rand() % N;
+        int j = rand() % N;
+        if (i == j) continue;
+        double payoff_i = calculatePayoff(i, behaviors);
+        double payoff_j = calculatePayoff(j, behaviors);
+        double prob = fermiProbability(payoff_i, payoff_j);
+        if ((rand() / (RAND_MAX + 1.0)) < prob) {
+            grid[i] = grid[j];
+        }
+    }
+}
